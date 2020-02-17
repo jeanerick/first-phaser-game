@@ -9,6 +9,8 @@ export class GameScene extends Phaser.Scene {
 
     info: Phaser.GameObjects.Text;
     private player: Phaser.Physics.Arcade.Sprite
+    private goals: Phaser.Physics.Arcade.Image[] = [];
+
 
     constructor() {
         super({
@@ -27,12 +29,15 @@ export class GameScene extends Phaser.Scene {
             "/");
         this.load.image('player', 'assets/capivara.jpg');
         this.load.image('fruta', 'assets/fruta.png');
+        this.load.image('arrow', 'assets/arrow.png');
     }
 
     create(): void {
         const instance = this;
         this.info = this.add.text(10, 10, '',
             { font: '24px Arial Bold', fill: '#FBFBAC' });
+
+        this.input.mouse.capture = true;
 
         this.player = this.physics.add.sprite(100, 100, 'player');
 
@@ -47,10 +52,13 @@ export class GameScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-' + 'A', function (event) { instance.onKeyLeft(event) });
         this.input.keyboard.on('keydown-' + 'D', function (event) { instance.onKeyRight(event) });
 
+        this.input.keyboard.on('keydown-' + 'F', function (event) { instance.onAtack() });
+
         for (let index = 0; index < this.maximumOfApples; index++) {
             this.createFruit();
         }
     }
+
 
     update(time: number): void {
         const diff: number = time - this.lastStarTime;
@@ -78,13 +86,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     private onKeyUp(evnt) {
-        this.player.angle  = 90;
+        this.player.angle = 90;
         this.player.setPosition(this.player.x, this.player.y - 10);
         //this.player.setAcceleration(0,-15)
         if (this.player.body.blocked.up) { this.killPlayer() }
     }
     private onKeyDow(evnt) {
-        this.player.angle  = -90;
+        this.player.angle = -90;
         this.player.setPosition(this.player.x, this.player.y + 10);
         //this.player.setAcceleration(0, 15)
         if (this.player.body.blocked.down) { this.killPlayer() }
@@ -102,6 +110,32 @@ export class GameScene extends Phaser.Scene {
         if (this.player.body.blocked.right) { this.killPlayer() }
     }
 
+    private onAtack() {
+        const instance = this
+        let arrow: Phaser.Physics.Arcade.Image;
+        arrow = this.physics.add.image(this.player.x, this.player.y, "arrow");
+        arrow.setDisplaySize(40, 40);
+        arrow.setVelocityX(3000);
+        
+        this.goals.forEach((goal)=>{
+
+            this.physics.add.collider(goal, arrow,
+                instance.onArrow(arrow, goal), null, this);
+
+        });
+
+        arrow.setAcceleration(1, 0);
+    }
+
+    onArrow(arrow: Phaser.Physics.Arcade.Image, goal: Phaser.Physics.Arcade.Image) {
+        return () =>{
+            this.starsCaught += 1;
+            arrow.destroy()
+            goal.destroy();
+            this.onVictory();
+        }
+    }
+
     killPlayer(): void {
         this.deaths -= 1;
         this.player.setTint(0xff0000)
@@ -109,7 +143,7 @@ export class GameScene extends Phaser.Scene {
         setTimeout(() => {
             this.player.clearTint();
             this.onFail();
-            this.player.setPosition(100, 100);            
+            this.player.setPosition(100, 100);
         }, 100);
 
     }
@@ -130,6 +164,7 @@ export class GameScene extends Phaser.Scene {
         fruit.setDisplaySize(40, 40);
         this.physics.add.collider(fruit, this.player,
             this.colectFruit(fruit), null, this);
+        this.goals.push(fruit);
     }
 
 
